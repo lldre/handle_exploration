@@ -1,6 +1,4 @@
-blog main
-
-Once upon a corona quarantine day, I attempted to create a fully privileged process by becoming system. My desire was to get unlimited access to any user-mode process on the system. After stealing system's token I was granted unlimited power, or so I thought.. 
+Once upon a corona quarantine day, I wanted to create a fully privileged process by becoming system. My desire was to get unlimited access to any user-mode process on the system. After stealing system's token I was granted unlimited power, or so I thought.. 
 
 In this post I'll show you the journey I went on trying to get full access to a privileged process
 
@@ -164,7 +162,7 @@ Callbacks can be registered using [ObRegisterCallback](https://docs.microsoft.co
 ![bec07f4dd1a0125677bd38f68f4a12b1.png](./_resources/b1d6ef940a504ca6bdb5b7c2405b2ed2.png)
 
 
-### ProcessPreOperationCallback
+## ProcessPreOperationCallback
 >Before I get into the WdFilter callback I want to give credit to n4r1b. I used some of his [reversed structure definitions](https://github.com/n4r1b/WdFilter-Research/) to supplement the disassembly ahead, together with some old WdFilter I had symbols for. (I did discover some new flags and functionality in the callback which I roughly named as I saw them) Check out his WdFilter reverse engineering series [over here](https://n4r1b.netlify.app/posts/2020/01/dissecting-the-windows-defender-driver-wdfilter-part-1/).
 
 
@@ -212,7 +210,7 @@ and
 ![23a81eddca557d5d878ae90ebf70a193.png](./_resources/03b32681294546a18ba341309e92b16d.png)
 
 
-### Process Injection path
+## Process Injection path
 Let's first follow the path that's responsible for handling handles with potential process injection access rights.
 
 The main check deciding whether we should even call the functions responsible for checking if injection is allowed is this:
@@ -325,7 +323,7 @@ The first is whether we are a whitelisted "friendly" process and the second is w
 
 This is also what has happened, in the end, to our own handle which was requested with a system token.
 
-## Conclusion
+# Conclusion
 After analyzing the full callback we can take away the following points:
 
 If any of these conditions apply then none of the other checks matter:
