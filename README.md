@@ -162,7 +162,7 @@ Callbacks can be registered using [ObRegisterCallback](https://docs.microsoft.co
 ![bec07f4dd1a0125677bd38f68f4a12b1.png](./_resources/b1d6ef940a504ca6bdb5b7c2405b2ed2.png)
 
 
-## ProcessPreOperationCallback
+### ProcessPreOperationCallback
 >Before I get into the WdFilter callback I want to give credit to n4r1b. I used some of his [reversed structure definitions](https://github.com/n4r1b/WdFilter-Research/) to supplement the disassembly ahead, together with some old WdFilter I had symbols for. (I did discover some new flags and functionality in the callback which I roughly named as I saw them) Check out his WdFilter reverse engineering series [over here](https://n4r1b.netlify.app/posts/2020/01/dissecting-the-windows-defender-driver-wdfilter-part-1/).
 
 
@@ -210,7 +210,7 @@ and
 ![23a81eddca557d5d878ae90ebf70a193.png](./_resources/03b32681294546a18ba341309e92b16d.png)
 
 
-## Process Injection path
+### Process Injection path
 Let's first follow the path that's responsible for handling handles with potential process injection access rights.
 
 The main check deciding whether we should even call the functions responsible for checking if injection is allowed is this:
@@ -229,7 +229,7 @@ In case the target process has 2 or more handles with these access rights open a
 
 The first function, which according to the symbols of my old WdFilter is called `MpAllowCodeInjection`, will do exactly that. Check if we are allowed to inject code and keep our AccessRights.
 
-### MpAllowCodeInjection
+#### MpAllowCodeInjection
 
 We are first faced with some checks that would let us off the hook immediately:
 * Is our calling process exempt because it's on the exclusion list?
@@ -252,7 +252,7 @@ The only way for this function to return FALSE and thus immediately disallow our
 
 In our case both Masks are 0 and so we pass this test.
 
-### MpAllowAccessBasedOnHipsRule
+#### MpAllowAccessBasedOnHipsRule
 The hips check is a bit simpler, checking only 3 flags of which 2 are interesting to us:
 ![a1e8042c46557cde43c956338cd8f5ff.png](./_resources/20905a6e6a00462d8d59c95cdef12d9c.png)
 
@@ -262,11 +262,11 @@ We can infer from this that the ProcessContext+38h field contains some sort of a
 
 In our case the calling process has a flag of 0 and our target has a flag of 0x7ff meaning that we aren't disallowed to inject code. The flag to allow code injection into the target process isn't set in this case,  but that doesn't matter because we skip that check by passing the first.
 
-### failed  route
+#### failed  route
 If we fail to pass either of those check we immediately get hit by a DesiredAccess downgrade of the following access rights as shown before:
 ![a16a5bfb86db2d2f79281dfee8de2bd2.png](./_resources/70e1bc2837914c77b0965a3215407699.png)
 
-## Second set of access rights
+### Second set of access rights
 The second set of access rights that are checked are a little less intrusive, but might still be too invasive for normal processes to use on protected processes or other privileged processes.
 
 These next set of checks also depend, as before with part of the code-injection checks, on hips functionality being enabled using a flag in MpData:
@@ -306,7 +306,7 @@ DesiredAccess = (SYNCHRONIZE (0x00100000L)                 |
 
 So if we have any of those 4 access rights defined in our DesiredAccess then, no matter what, after this check we will still have them. At worst we will lose some of the requested access rights that aren't one of those 4. If anyone knows the reason for this, let me know!
 
-## Last check
+### Last check
 After processing our DesiredAccess it seems to send a notification about the fact that a process was opened using `MpObSendOpenProcessBMNotification`
 and then gets to the last check. Here we first check if the target process'(MsMpEng.exe) sid isnt that of the service manager
 ![a0f1d922b0fab73640f4d4ca8932f975.png](./_resources/f8e28278de384e51a5480998f59e415e.png)
