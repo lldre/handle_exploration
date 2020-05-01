@@ -1,19 +1,12 @@
 blog main
 
-# intro and goal
-The goal of this research will be to see how windef strips it's access handle and if there's  other processes with similar behavior such as lsass and crss.
-
-"Once upon a corona quarantine day I attempted to become the ruler of all of Windows by making my process' token that of system. I was granted unlimited power and could take control of any process by injection. Or so I thought... Upon attempting to access certain protected/privileged process using PROCESS_ALL_ACCESS I was kindly given a handle, however this handle was only enough to ReadProcessMemory! Without having OpenProcess return any error to my request to open the process with PROCESS_ALL_ACCESS, I was still stripped of my rights to VirtualAllocEx, WriteProcessMemory, and CreateRemoteThreadEx. How could this be! I could of course edit the GrantedAccessBits inside the HANDLE_TABLE_ENTRY, but that wouldn't make for a very interesting blog. Let the hunt for our adversary begin!"
-
-Before we start off I want to mention that some of the named items come from a 2 year old WdFilter build that I have symbols of and some come from the amazing work done by n4r1b documented here :https://github.com/n4r1b/WdFilter-Research/blob/master/Context.h
-
 Once upon a corona quarantine day, I attempted to create a fully privileged process by becoming system. My desire was to get unlimited access to any user-mode process on the system. After stealing system's token I was granted unlimited power, or so I thought.. 
 
-In this blog I'll show you the journey I went on trying to get full access to a protected process
+In this post I'll show you the journey I went on trying to get full access to a privileged process
 
-# Intro
+# Humble begginings
 
-The goal of this prject being getting complete access to protected processes, we will start of by making a small c program which attempts to open a process with `PROCESS_ALL_ACCESS` rights:
+The goal of this prject being getting complete access to protected processes, we will start of by making a small c program which attempts to open a process with [PROCESS_ALL_ACCESS](https://docs.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights) rights:
 
 ```c
 	DWORD pid = atoi(argv[1]);
@@ -128,7 +121,7 @@ For this one we're gonna have to start at the source. The function responsible f
 At the start of the function it decides between 2 major paths:
 ![d95767ddf8e6012ba1b93d684f9d0302.png](./_resources/9aed0c1d899e4f7bb2a465d66ead8910.png)
 
-After picking the `ObCreateHandle/ObOpenHandle` path, we encounter the first interesting piece of code in deciding what will happen to our `OpenProcess` call, `SeAccessCheck`:
+After picking the `ObCreateHandle/ObOpenHandle` path, we encounter the first interesting piece of code in deciding what will happen to our `OpenProcess` call, [SeAccessCheck](https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seaccesscheck):
 
 ![72cb7c6da566e33f33a868e3d8a07847.png](./_resources/70604d81a29742b3a333a0ae98e4b4ca.png)
 
@@ -167,6 +160,7 @@ The only other area that really impacts the GrantedAccessBits variable written t
 
 So it seems that `ObpCallPreOperationCallbacks` is responsible for editing our DesiredAccess before they get to the handle entry.
 Callbacks can be registered using [ObRegisterCallback](https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obregistercallbacks) and they trigger under predefined circumstances. In this case Windows Defender registered a callback named `WdFilter!ProcessObjectPreOperationCallback`for opening handles to processes or desktop objects:
+
 ![bec07f4dd1a0125677bd38f68f4a12b1.png](./_resources/b1d6ef940a504ca6bdb5b7c2405b2ed2.png)
 
 
@@ -202,14 +196,19 @@ and save both processes' pids for (internal) event logging use.
 ![a6857f1788a8eb0289dbe5db41373fdd.png](./_resources/67d9ea40dd264704b509884258005504.png)
 
 Because of this relatively new check not triggering in our case, we skip a bit of new functionality that looks like this (might be interesting to dive into at a later date):
+
 ![228c46d1f53b3f71548d4e9665e07959.png](./_resources/44b5776259d84404b37bf5556ed998e9.png)
 
 Then after checking some global flags set inside the MpData structure:
+
 ![82588fcdf1c2116d8844ffbc16c74553.png](./_resources/f801d837ee5f4a4a906880e33d974a1d.png)
 
 We get to a point where it checks 2 different sets of access rights:
+
 ![6cae502d30d13218b19d1f8839046140.png](./_resources/5e6cb55936de414c87f64add367d7d16.png)
+
 and
+
 ![23a81eddca557d5d878ae90ebf70a193.png](./_resources/03b32681294546a18ba341309e92b16d.png)
 
 
@@ -217,6 +216,7 @@ and
 Let's first follow the path that's responsible for handling handles with potential process injection access rights.
 
 The main check deciding whether we should even call the functions responsible for checking if injection is allowed is this:
+
 ![c7339020af9544a03365c2da2e6a123a.png](./_resources/6e7679cc17cf4311b6107428d1c9dac4.png)
 
 I'm not sure if I grasp this check, but if I understand correctly then the entire "code injection allowed" section is skipped IF the process hasn't had its handle opened with those flags more than twice. My best guess would be that this has to do with crss/lsass or other essential services already being expected to have opened a handle to the target process before it's possible for a normal process to create a handle to it. If we were able to trigger this check and avoid the injection allowed check, we would be able to bypass the first edit of our DesiredAccess entirely:
