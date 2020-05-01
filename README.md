@@ -2,7 +2,7 @@ Once upon a corona quarantine day, I wanted to create a fully privileged process
 
 In this post I'll show you the journey I went on trying to get full access to a privileged process
 
-# Humble begginings
+# Humble beginnings
 
 The goal of this prject being getting complete access to protected processes, we will start of by making a small c program which attempts to open a process with [PROCESS_ALL_ACCESS](https://docs.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights) rights:
 
@@ -100,7 +100,7 @@ ntdll!_HANDLE_TABLE_ENTRY
    +0x008 GrantedAccessBits : 0y0000111111111111111010100 (0x1fffd4)
     ... snip ...
 ```
-Our handle isn't equal to `PROCESS_ALL_RIGHTS(0x1FFFFF)` despite the OpenProcess call succeeding, this might explain why we can't use WriteProcessMemory here. 
+Our handle isn't equal to `PROCESS_ALL_ACCESS(0x1FFFFF)` despite the OpenProcess call succeeding, this might explain why we can't use WriteProcessMemory here. 
 
 If we bitwise OR `PROCESS_ALL` with these access rights we will see what was stripped from our 0x1FFFFF to reach the 0x1FFFD4:
 ```c
@@ -357,5 +357,9 @@ OR (this can be done by simply being system as we've seen)
 And don't forget:
 * If you request any of the access rights in the other check and you fail that check, all access rights except for those 4 will be stripped.
 
-So as system we can keep doing our process injection as long as we aren't targeting something(spawned by?) with the service manager SID. If we do want to target something with such a SID we will need to become real friendly with microsoft or just use the Service SID ourselves as well.
+So as system we can keep doing our process injection as long as we aren't targeting something(belonging to?) the service SID. If we do want to target something with such a SID we will need to become real friendly with microsoft or just use the Service SID for ourselves.
+
+PS. You could just overwrite the GrantedPointerBits of the HANDLE_TABLE_ENTRY, but that would be no fun :)
+
+
 
