@@ -254,6 +254,7 @@ In our case both Masks are 0 and so we pass this test.
 
 #### MpAllowAccessBasedOnHipsRule
 The hips check is a bit simpler, checking only 3 flags of which 2 are interesting to us:
+
 ![a1e8042c46557cde43c956338cd8f5ff.png](./_resources/20905a6e6a00462d8d59c95cdef12d9c.png)
 
 We can infer from this that the ProcessContext+38h field contains some sort of a bitflag rules field which has at least these 2 rules:
@@ -264,15 +265,18 @@ In our case the calling process has a flag of 0 and our target has a flag of 0x7
 
 #### failed  route
 If we fail to pass either of those check we immediately get hit by a DesiredAccess downgrade of the following access rights as shown before:
+
 ![a16a5bfb86db2d2f79281dfee8de2bd2.png](./_resources/70e1bc2837914c77b0965a3215407699.png)
 
 ### Second set of access rights
 The second set of access rights that are checked are a little less intrusive, but might still be too invasive for normal processes to use on protected processes or other privileged processes.
 
 These next set of checks also depend, as before with part of the code-injection checks, on hips functionality being enabled using a flag in MpData:
+
 ![f0d17208e89f5fa8b8c481234aa6e460.png](./_resources/7b08a2d0960448d7811192747f3d27d3.png)
 
 If enabled it checks if we aren't a registered anti-malware process, or higher, by checking the _EPROCESS->Protection flag of our process. (for a more detailed explanation on Protected Processes, [this 3-part blog series](https://www.crowdstrike.com/blog/evolution-protected-processes-part-1-pass-hash-mitigations-windows-81/) by Alex Ionescu is a good place to start)
+
 ![385c7bc38b936624b21c63e13c86f5a3.png](./_resources/9a3310c7e1b349cbbebf80e670628305.png)
 
 
@@ -283,6 +287,7 @@ If we aren't a sufficiently privileged protected process it will proceed to do a
 * [0x2000000] We would assume for this flag too that, if set, we would be allowed to use those AccessRights in our handle. (not the case)
 
 If the first flag isnt set, or is set in combination with the second flag, then we will skip some altering of our handle. If we, however, do not pass the HIPS checks, our edit rights will be edited, but not in a way that makes much sense to me:
+
 ![1d842638f5ff4bf610e61d49371ccc5d.png](./_resources/996f474050d34dbe8e27b64614231a96.png)
 
 
@@ -309,9 +314,11 @@ So if we have any of those 4 access rights defined in our DesiredAccess then, no
 ### Last check
 After processing our DesiredAccess it seems to send a notification about the fact that a process was opened using `MpObSendOpenProcessBMNotification`
 and then gets to the last check. Here we first check if the target process'(MsMpEng.exe) sid isnt that of the service manager
+
 ![a0f1d922b0fab73640f4d4ca8932f975.png](./_resources/f8e28278de384e51a5480998f59e415e.png)
 
 If it is we do 2 more checks (which used to be done inside a function called `MpIsHardeningExemptByContext`):
+
 ![807d4c64bd201b2e191cdbf75ebb17c8.png](./_resources/f6018db0dc8b422395ff40f7f6a6ccdd.png)
 
 The first is whether we are a whitelisted "friendly" process and the second is whether we have a service SID ourselves or not. If we aren't either of those then our access rights get stripped of terminate and code-injection rights, irregardless of any previous checks:
