@@ -1,3 +1,7 @@
+Full version with a nicer layout can be found on my blog: https://saza.re/posts/handle_exploration/
+
+
+
 Once upon a corona quarantine day, I wanted to create a fully privileged process by becoming system. My desire was to get unlimited access to any user-mode process on the system. After stealing system's token I was granted unlimited power, or so I thought.. 
 
 In this post I'll show you the journey I went on trying to get full access to a privileged process
